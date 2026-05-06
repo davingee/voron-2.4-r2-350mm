@@ -6,56 +6,19 @@
 
 ## Access
 
-### Local network
+### SSH
 
-```bash
-ssh scott@192.168.7.106 -p81
-```
+| Connection    | Command                           |
+| ------------- | --------------------------------- |
+| Local network | `ssh scott@192.168.7.106 -p81`   |
+| Tailscale     | `ssh scott@voron`                 |
 
-### Remote (DuckDNS)
+### Mainsail web UI
 
-```bash
-ssh scott@dirtbike.duckdns.org -p81
-/etc/sysctl.d/99-tailscale.conf
-scott@voron:~$ /usr/sbin/iw dev wlan0 get power_save
-Power save: off
-scott@voron:~$ sudo /usr/sbin/ethtool -k wlan0 | grep -E "rx-udp-gro-forwarding|rx-gro-list"
-rx-gro-list: off
-ssh scott@192.168.7.85
-
-  243  sudo nano /etc/mediamtx/mediamtx.yml
-  244  sudo systemctl start mediamtx
-  245  sudo systemctl stop mediamtx
-  246  sudo systemctl start mediamtx
-  247  sudo systemctl restart mediamtx
-  248  sudo journalctl -u mediamtx.service -n 10
-  249  sudo journalctl -u mediamtx.service -n 40
-  250  sudo nano /etc/mediamtx/mediamtx.yml
-  251  sudo systemctl restart mediamtx
-  252  sudo journalctl -u mediamtx.service -n 40
-  253  sudo systemctl is-enabled mediamtx
-
-```
-
-### Mainsail web UI — local
-
-```
-http://192.168.7.106
-```
-
-### Mainsail web UI — remote (port forward to local machine)
-
-```bash
-ssh -L 8080:localhost:80 scott@dirtbike.duckdns.org -p81
-# then open http://localhost:8080
-```
-
-### Mainsail + camera — remote (single tunnel)
-
-```bash
-sudo ifconfig lo0 alias 192.168.7.85
-sudo ssh -L 80:localhost:80 -L 192.168.7.85:8889:192.168.7.85:8889 scott@dirtbike.duckdns.org -p81
-```
+| Connection    | URL                      |
+| ------------- | ------------------------ |
+| Local network | `http://192.168.7.106`   |
+| Tailscale     | `http://voron`           |
 
 ---
 
@@ -76,7 +39,11 @@ Config lives on the printer at:
 Push changes from this repo to the printer:
 
 ```bash
+# Local network
 scp -P81 printer.cfg scott@192.168.7.106:~/printer_data/config/printer.cfg
+
+# Tailscale
+scp printer.cfg scott@voron:~/printer_data/config/printer.cfg
 ```
 
 Then do a `FIRMWARE_RESTART` in Mainsail console.
@@ -184,6 +151,40 @@ Connect to network:
 ```bash
 nmcli dev wifi connect "NetworkName" password "password" ifname wlan0
 nmcli connection modify "NetworkName" connection.autoconnect yes
+```
+
+Verify power save is off (reduces latency/dropouts with Tailscale):
+
+```bash
+/usr/sbin/iw dev wlan0 get power_save
+# should show: Power save: off
+```
+
+Verify UDP GRO forwarding (Tailscale performance setting — config in `/etc/sysctl.d/99-tailscale.conf`):
+
+```bash
+sudo /usr/sbin/ethtool -k wlan0 | grep -E "rx-udp-gro-forwarding|rx-gro-list"
+# both should show: off
+```
+
+---
+
+## MediaMTX (camera stream)
+
+Config: `/etc/mediamtx/mediamtx.yml`
+
+```bash
+# Edit config
+sudo nano /etc/mediamtx/mediamtx.yml
+
+# Service management
+sudo systemctl start mediamtx
+sudo systemctl stop mediamtx
+sudo systemctl restart mediamtx
+sudo systemctl is-enabled mediamtx
+
+# View logs
+sudo journalctl -u mediamtx.service -n 40
 ```
 
 ---
