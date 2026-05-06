@@ -1,0 +1,31 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Klipper / Moonraker generated files
+printer_data/logs/
+printer_data/gcodes/
+printer_data/comms/
+klippy.log
+moonraker.log
+*.log
+
+# Temporary and backup files
+*.bak
+*.tmp
+*~
+*.swp
+*.swo
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Editor
+.vscode/
+.idea/
+
+# Local overrides
+garbage/

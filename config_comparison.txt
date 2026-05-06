@@ -1,0 +1,149 @@
+Config Comparison: old (fbe80ca) vs current printer.cfg
+=========================================================
+
+KEY:
+  OLD  = fbe80ca split config (printer_fbe80ca.cfg + 4 include files)
+  NEW  = current printer.cfg
+  [!]  = bug / problem
+  [+]  = improvement
+  [~]  = intentional change
+  [?]  = needs decision
+
+
+-------------------------------------------------------------------
+PROBE (TAP)
+-------------------------------------------------------------------
+
+[!] Pin inversion — WRONG in new, now fixed back
+    OLD:  pin: ^EBBCan:gpio22
+    NEW:  pin: ^!EBBCan:gpio22   ← ! was incorrectly added during consolidation
+    FIX:  reverted to ^EBBCan:gpio22 (matches old)
+
+[+] Sample count — improved in new
+    OLD:  samples: 1
+          samples_result: (commented out)
+          sample_retract_dist: (commented out)
+          samples_tolerance: (commented out)
+          samples_tolerance_retries: (commented out)
+    NEW:  samples: 3
+          samples_result: median
+          sample_retract_dist: 3.0
+          samples_tolerance: 0.010
+          samples_tolerance_retries: 3
+
+
+-------------------------------------------------------------------
+FILAMENT SENSOR
+-------------------------------------------------------------------
+
+[!] Sensor disabled in new — AND pin has wrong inversion if re-enabled
+    OLD:  [filament_switch_sensor filament_sensor]   ← ACTIVE
+          switch_pin: ^EBBCan:gpio21                 ← no inversion
+          pause_on_runout: true
+          event_delay / pause_delay: not set
+
+    NEW:  commented out entirely
+          switch_pin: ^!EBBCan:gpio21                ← ! added (wrong, matches probe mistake)
+
+    ACTION NEEDED: if re-enabling, use ^EBBCan:gpio21 (no !) to match old working config
+
+
+-------------------------------------------------------------------
+X/Y STEPPER MOTOR CURRENT
+-------------------------------------------------------------------
+
+[~] run_current reduced to run cooler
+    OLD:  run_current: 1.3   (both stepper_x and stepper_y)
+    NEW:  run_current: 1.1
+    NOTE: lower current = less torque headroom with loose belts
+          contributed to layer shift — re-tension belts before deciding final value
+
+
+-------------------------------------------------------------------
+PRINTER LIMITS
+-------------------------------------------------------------------
+
+[~] max_accel raised after input shaper calibration
+    OLD:  max_accel: 3800
+    NEW:  max_accel: 6000
+    NOTE: based on MZV X=51Hz / EI Y=46Hz results
+          needs re-tuning after belt re-tension (Y now at 35.9Hz — too low)
+
+[~] square_corner_velocity raised
+    OLD:  square_corner_velocity: 3.0
+    NEW:  square_corner_velocity: 5.0
+
+[~] idle_timeout extended
+    OLD:  timeout: 300   (5 min)
+    NEW:  timeout: 1800  (30 min)
+
+
+-------------------------------------------------------------------
+PRINT_START MACRO
+-------------------------------------------------------------------
+
+[+] Added nevermore cancel at start (prevents shutoff if restarting mid-session)
+    OLD:  (not present)
+    NEW:  UPDATE_DELAYED_GCODE ID=nevermore_off DURATION=0
+
+[+] Added BED_MESH_CALIBRATE (KAMP adaptive mesh every print)
+    OLD:  not called in PRINT_START
+    NEW:  BED_MESH_CALIBRATE called after G32
+
+[~] Extruder wait window slightly wider
+    OLD:  TEMPERATURE_WAIT SENSOR=extruder MINIMUM=145 MAXIMUM=155
+    NEW:  TEMPERATURE_WAIT SENSOR=extruder MINIMUM=145 MAXIMUM=160
+
+[~] Filament sensor enable/disable calls added then commented out
+    OLD:  not present
+    NEW:  commented out (SET_FILAMENT_SENSOR lines removed)
+
+
+-------------------------------------------------------------------
+PRINT_END MACRO
+-------------------------------------------------------------------
+
+[~] Nevermore cooldown extended
+    OLD:  UPDATE_DELAYED_GCODE ID=nevermore_off DURATION=120  (2 min)
+    NEW:  UPDATE_DELAYED_GCODE ID=nevermore_off DURATION=300  (5 min)
+
+
+-------------------------------------------------------------------
+THINGS THAT ARE THE SAME (no changes)
+-------------------------------------------------------------------
+
+  - All stepper pin assignments (X, Y, Z0-Z3)
+  - All Z stepper config (rotation_distance, gear_ratio, microsteps)
+  - All Z TMC2209 settings (run_current 1.0, hold_current 0.6)
+  - Extruder (rotation_distance 21.8864, gear_ratio 50:10, PA 0.04)
+  - Extruder TMC2209 (run_current 0.65, stealthchop 0)
+  - MAX31865 PT1000 sensor config
+  - All fan sections (part cooling, hotend fan, controller fans, nevermore, exhaust)
+  - ADXL345 + resonance_tester (accel_per_hz: 50)
+  - LED config (toolhead_light, btt_mini12864)
+  - Case light
+  - safe_z_home (175,175)
+  - quad_gantry_level (all points and tolerances)
+  - bed_mesh (mesh_min/max, probe_count, bicubic, fade)
+  - Board pins + display
+  - firmware_retraction
+  - G32 macro (functionally identical)
+  - Temperature sensors (MP8, CB1, EBB)
+  - PID values (heater_bed, extruder)
+  - z_offset (-1.310)
+  - input_shaper values (X MZV 51Hz, Y EI 46Hz)
+
+
+-------------------------------------------------------------------
+OPEN ITEMS
+-------------------------------------------------------------------
+
+  1. Re-tension Y belt (currently 35.9Hz, was 46Hz, target ~110Hz plucked)
+     Then re-run SHAPER_CALIBRATE and update max_accel
+
+  2. Filament sensor — decide: enable or leave disabled
+     If enabling: use switch_pin: ^EBBCan:gpio21 (no !)
+     Also add event_delay: 3.0 and pause_delay: 0.5
+
+  3. After belt re-tension, re-evaluate X/Y run_current (1.1 vs 1.3)
+     If still getting skips at speed, bump to 1.2

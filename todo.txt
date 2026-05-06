@@ -1,0 +1,2 @@
+allow ability to create multiple prints with 1 sti file
+cache filiment and profile select
