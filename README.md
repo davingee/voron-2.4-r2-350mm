@@ -11,7 +11,7 @@
 | Connection    | Command                           |
 | ------------- | --------------------------------- |
 | Local network | `ssh scott@192.168.7.106 -p81`   |
-| Tailscale     | `ssh scott@voron`                 |
+| Tailscale     | `ssh scott@voron -p81`            |
 
 ### Mainsail web UI
 
@@ -43,7 +43,7 @@ Push changes from this repo to the printer:
 scp -P81 printer.cfg scott@192.168.7.106:~/printer_data/config/printer.cfg
 
 # Tailscale
-scp printer.cfg scott@voron:~/printer_data/config/printer.cfg
+scp -P81 printer.cfg scott@voron:~/printer_data/config/printer.cfg
 ```
 
 Then do a `FIRMWARE_RESTART` in Mainsail console.
